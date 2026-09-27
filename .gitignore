@@ -11,7 +11,7 @@ __pycache__/
 *.bin
 *.safetensors
 
-data/
+
 checkpoints/
 runs/
 wandb/
