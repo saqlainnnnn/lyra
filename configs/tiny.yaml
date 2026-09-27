@@ -1,0 +1,22 @@
+model:
+  vocab_size: 50368
+  hidden_size: 256
+  num_layers: 6
+  num_heads: 4
+  intermediate_size: 1024
+  max_position_embeddings: 512
+
+decision_head:
+  num_layers: 2
+  num_heads: 4
+  intermediate_size: 1024
+  dropout: 0.1
+
+training:
+  batch_size: 8
+  learning_rate: 0.0001
+  weight_decay: 0.01
+  dtype: float32
+
+data:
+  dataset: LocalLLaMA/typed-decisions

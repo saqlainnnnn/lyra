@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lyra"
+version = "0.1.0"
+description = "A from-scratch PyTorch typed decision language model"
+requires-python = ">=3.11"
+dependencies = [
+    "torch",
+    "datasets",
+    "transformers",
+    "pyyaml",
+    "tqdm",
+]
+
+[tool.setuptools.packages.find]
+include = ["lyra*"]
