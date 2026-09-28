@@ -1,6 +1,10 @@
 import json
+import torch
 
 from datasets import load_dataset
+
+from lyra.data.format import format_decision_input
+from lyra.data.tokenize import LyraTokenizer
 
 
 DATASET_NAME = "LocalLLaMA/typed-decisions"
@@ -17,12 +21,10 @@ def load_typed_decisions(
     workflow: str,
     split: str = "train",
 ):
-    """Load one typed-decisions workflow."""
-
     if workflow not in WORKFLOWS:
         raise ValueError(
             f"Unknown workflow: {workflow}. "
-            f"Available workflows: {WORKFLOWS}"
+            f"Available: {WORKFLOWS}"
         )
 
     return load_dataset(
@@ -33,8 +35,6 @@ def load_typed_decisions(
 
 
 def parse_example(row: dict) -> dict:
-    """Convert JSON-encoded dataset fields into Python objects."""
-
     return {
         "id": row["id"],
         "workflow": row["workflow"],
@@ -45,21 +45,64 @@ def parse_example(row: dict) -> dict:
         "factors": json.loads(row["factors"]),
     }
 
-def build_decision_input(example: dict, question_name: str) -> dict:
-    """Build the model input for one decision question."""
 
-    if question_name not in example["questions"]:
-        raise ValueError(
-            f"Unknown question: {question_name}. "
-            f"Available: {list(example['questions'])}"
+class DecisionDataset:
+    """
+    PyTorch-style dataset wrapper around typed-decisions.
+
+    Each dataset item corresponds to one decision question.
+    """
+
+    def __init__(
+        self,
+        workflow: str,
+        split: str,
+        question_name: str,
+        tokenizer: LyraTokenizer | None = None,
+    ):
+        self.dataset = load_typed_decisions(
+            workflow,
+            split,
         )
 
-    question = example["questions"][question_name]
+        self.question_name = question_name
 
-    return {
-        "question_name": question_name,
-        "state": example["state"],
-        "instruction": question["instructions"],
-        "criteria": question["criteria"],
-        "type": question["type"],
-    }
+        self.tokenizer = (
+            tokenizer
+            if tokenizer is not None
+            else LyraTokenizer()
+        )
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, index):
+
+        row = self.dataset[index]
+
+        example = parse_example(row)
+
+        formatted = format_decision_input(
+            example,
+            self.question_name,
+        )
+
+        encoded = self.tokenizer.tokenize_decision(
+            formatted
+        )
+
+        probabilities = example["gold"][
+            self.question_name
+        ]["probabilities"]
+
+        target = torch.tensor(
+            [
+                probabilities[name]
+                for name in encoded["option_names"]
+            ],
+            dtype=torch.float32,
+        )
+
+        encoded["target"] = target
+
+        return encoded
